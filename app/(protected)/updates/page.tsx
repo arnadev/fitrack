@@ -1,7 +1,6 @@
 import React from 'react';
 import { cookies } from 'next/headers';
 import { getUserId } from '@/utilities/gerUserId';
-import { redirect } from 'next/navigation';
 import UserActivity from '@/app/models/UserActivity';
 import Log from '@/app/models/Log';
 import { connectMongo } from '@/utilities/connection';
@@ -117,7 +116,7 @@ const UpdatesPage = async () => {
               </p>
             </div>
           ) : (
-            activities.map((activity, index) => (
+            activities.map((activity) => (
               <div
                 key={`${activity.activityUserId}-${activity.timestamp.getTime()}`}
                 className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow relative"

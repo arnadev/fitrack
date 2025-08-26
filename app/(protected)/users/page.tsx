@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAlert } from '@/contexts/AlertContext';
 
 interface User {
@@ -89,16 +89,15 @@ const UserSearchPage = () => {
   };
 
   // Debounced search function
-  const debouncedSearch = useCallback(
+const debouncedSearch = useMemo(
+  () =>
     debounce(async (query: string) => {
       setError('');
-      
+
       try {
         const response = await fetch('/api/search', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({ query: query.trim() }),
         });
@@ -108,8 +107,7 @@ const UserSearchPage = () => {
           const fetchedUsers = data.users || [];
           setUsers(fetchedUsers);
           setHasSearched(true);
-          
-          // Check follow status for all fetched users
+
           if (fetchedUsers.length > 0) {
             const userIds = fetchedUsers.map((user: User) => user._id);
             await checkFollowStatus(userIds);
@@ -124,8 +122,9 @@ const UserSearchPage = () => {
         setLoading(false);
       }
     }, 200),
-    []
-  );
+  [] // safe, debounce returns a stable function
+);
+
 
   // Handle input change with immediate loading state
   const handleSearchChange = (value: string) => {

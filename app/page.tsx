@@ -59,7 +59,7 @@ const AuthPage = () => {
           )}
 
           {/* Social Login Buttons */}
-          <SocialLoginButtons />
+          {/* <SocialLoginButtons /> */}
 
           {/* Toggle between Login and Signup */}
           <div className="mt-8 text-center">

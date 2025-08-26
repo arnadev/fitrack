@@ -1,39 +1,35 @@
 import React from 'react'
-import Routine from '@/app/models/Routine'
-
+import RoutineModel from '@/app/models/Routine'
 import { connectMongo } from '@/utilities/connection';
 import RoutineCard from './RoutineCard';
-import { Types } from 'mongoose';
+import CreateRoutineModal from './CreateRoutineModal';
+import { Exercise } from '@/types';
 
-interface RoutineLean {
-  _id: Types.ObjectId;
-  userId: Types.ObjectId;
+interface Routine {
+  _id: string;
+  userId: string;
   name: string;
-  exercises: {
-    name: string;
-    sets: number;
-    repLower: number;
-    repUpper: number;
-    weight: number;
-  }[];
-  createdAt: Date;
+  exercises: Exercise[];
+  createdAt: string;
 }
 
-const RoutineCardSection = async ({ userId } : {userId: string}) => {
+const RoutineCardSection = async ({ userId, isOwner=false } : {userId: string, isOwner?: boolean}) => {
   await connectMongo();
 
-  const routines = (await Routine.find({ userId }).lean<RoutineLean[]>()).map(routine => ({
-    ...routine,
-    _id: routine._id.toString(),
-    userId: routine.userId.toString(),
-    createdAt: routine.createdAt.toString()
-  }));
+  const rawRoutines = await RoutineModel.find({ userId }).lean();
+
+  // JSON stringify/parse handles all the conversion automatically
+  const routines: Routine[] = JSON.parse(JSON.stringify(rawRoutines));
+
   return (
-    <div>
-      {routines.map(routine => (
-        <RoutineCard key={routine._id.toString()} routine={routine} isOwner={routine.userId.toString() === userId} />
-      ))}
-    </div>
+    <>
+      {isOwner && <CreateRoutineModal />}
+      <div className='lg:flex flex-wrap justify-center'>
+        {routines.map(routine => (
+          <RoutineCard key={routine._id} routine={routine} isOwner={isOwner}/>
+        ))}
+      </div>
+    </>
   )
 }
 

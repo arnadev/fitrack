@@ -10,11 +10,9 @@ export const connectMongo = async () => {
   }
 
   try {
-    // Check if MONGODB_URL is defined
-    if (!process.env.MONGODB_URL) {
+    if (!process.env.MONGODB_URL) { // Null check for TS
       throw new Error("MONGODB_URL environment variable is not defined");
     }
-
     const db = await mongoose.connect(process.env.MONGODB_URL);
 
     isConnected = db.connections[0].readyState === 1;

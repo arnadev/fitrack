@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LoginFormProps } from '@/types';
+
+interface LoginFormProps {
+  email: string;
+  password: string;
+  onEmailChange: (email: string) => void;
+  onPasswordChange: (password: string) => void;
+}
 
 const LoginForm = ({ email, password, onEmailChange, onPasswordChange }: LoginFormProps) => {
   const [error, setError] = useState('');

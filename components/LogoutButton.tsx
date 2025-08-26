@@ -5,9 +5,7 @@ const LogoutButton = () => {
   const router = useRouter();
 
   const handleLogout = async () => {
-    try {
-      console.log('Logging out...');
-      
+    try {      
       // Call the logout API endpoint
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
@@ -27,10 +25,11 @@ const LogoutButton = () => {
   };
 
   return(
-    <button onClick={handleLogout}
-    className="bg-red-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-red-700 transition duration-200 absolute bottom-4 right-4"
+    <button
+      onClick={handleLogout}
+      className="text-gray-700 hover:text-gray-900 cursor-pointer"
     >
-    Logout
+      Logout
     </button>
   )
 };

@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SignupFormProps } from '@/types';
+
+interface SignupFormProps {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  onNameChange: (name: string) => void;
+  onEmailChange: (email: string) => void;
+  onPasswordChange: (password: string) => void;
+  onConfirmPasswordChange: (confirmPassword: string) => void;
+}
 
 const SignupForm = ({ 
   name, 

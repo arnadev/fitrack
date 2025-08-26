@@ -7,7 +7,8 @@ const UserActivitySchema = new mongoose.Schema({
     activityUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     timestamp: { type: Date, required: true }
   }],
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
+  lastSeen: { type: Date, default: new Date(0) }
 });
 
 // Avoid model overwrite in dev hot-reload

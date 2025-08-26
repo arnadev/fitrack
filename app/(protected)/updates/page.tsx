@@ -11,6 +11,7 @@ interface ActivityWithLog {
   activityUserId: string;
   timestamp: Date;
   logEntry?: string;
+  isNew?: boolean; // ✅ Simple boolean addition
 }
 
 async function getActivitiesWithLogs(userId: string): Promise<ActivityWithLog[]> {
@@ -19,6 +20,11 @@ async function getActivitiesWithLogs(userId: string): Promise<ActivityWithLog[]>
   // Get user's activity document
   const userActivity = await UserActivity.findOne({ userId }).lean() as any;
   
+  const lastSeen = userActivity?.lastSeen; // ✅ Store lastSeen before updating
+
+  // Update lastSeen to now
+  await UserActivity.updateOne({ userId }, { lastSeen: new Date() });
+
   if (!userActivity || !userActivity.activity || userActivity.activity.length === 0) {
     return [];
   }
@@ -46,12 +52,14 @@ async function getActivitiesWithLogs(userId: string): Promise<ActivityWithLog[]>
   const activitiesWithLogs: ActivityWithLog[] = userActivity.activity.map((activity: any) => {
     const key = `${activity.activityUserId.toString()}-${activity.timestamp.getTime()}`;
     const logEntry = logMap.get(key);
+    const activityTimestamp = new Date(activity.timestamp);
 
     return {
       activityUserName: activity.activityUserName,
       activityUserId: activity.activityUserId.toString(),
-      timestamp: new Date(activity.timestamp),
-      logEntry: logEntry || 'Log entry not found'
+      timestamp: activityTimestamp,
+      logEntry: logEntry || 'Log entry not found',
+      isNew: activityTimestamp > lastSeen,
     };
   });
 
@@ -112,8 +120,17 @@ const UpdatesPage = async () => {
             activities.map((activity, index) => (
               <div
                 key={`${activity.activityUserId}-${activity.timestamp.getTime()}`}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow relative"
               >
+                {/* New tag */}
+                {activity.isNew && (
+                  <div className="absolute top-4 right-4">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      New
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex items-start space-x-4">
                   {/* Avatar */}
                   <div className="flex-shrink-0">

@@ -4,6 +4,7 @@ import Log from '@/app/models/Log';
 import { verifyToken } from '@/utilities/jwt';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { pushLogToFollowers } from '@/utilities/activityFeed';
 
 export async function GET(req: NextRequest) {
   try {
@@ -104,7 +105,9 @@ export async function POST(req: NextRequest) {
       entry: entry.trim(),
       timeStamp: new Date()
     };
-    
+
+    pushLogToFollowers(newLogEntry.timeStamp, userId); // fire and forget for updates (async)
+
     userLogs.logs.push(newLogEntry);
     await userLogs.save();
     

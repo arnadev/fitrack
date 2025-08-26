@@ -1,294 +1,167 @@
-'use client';
+import React from 'react';
+import { cookies } from 'next/headers';
+import { getUserId } from '@/utilities/gerUserId';
+import { redirect } from 'next/navigation';
+import UserActivity from '@/app/models/UserActivity';
+import Log from '@/app/models/Log';
+import { connectMongo } from '@/utilities/connection';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAlert } from '@/contexts/AlertContext';
-
-interface Activity {
-  activityId: string;
-  authorId: string;
-  authorName: string;
-  type: 'routine_created' | 'routine_updated' | 'log_added' | 'log_updated';
-  title: string;
-  description: string;
-  timestamp: string;
-  routineId?: string;
-  logTimestamp?: string;
-  isRead: boolean;
-  createdAt: string;
+interface ActivityWithLog {
+  activityUserName: string;
+  activityUserId: string;
+  timestamp: Date;
+  logEntry?: string;
 }
 
-interface Pagination {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasMore: boolean;
-}
+async function getActivitiesWithLogs(userId: string): Promise<ActivityWithLog[]> {
+  await connectMongo();
 
-const UpdatesPage: React.FC = () => {
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [pagination, setPagination] = useState<Pagination>({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPages: 0,
-    hasMore: false
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // Get user's activity document
+  const userActivity = await UserActivity.findOne({ userId }).lean() as any;
   
-  const router = useRouter();
-  const { showAlert } = useAlert();
-
-  const fetchActivities = async (page: number = 1, append: boolean = false) => {
-    try {
-      const response = await fetch(`/api/updates?page=${page}&limit=20`, {
-        credentials: 'include'
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (append) {
-          setActivities(prev => [...prev, ...data.activities]);
-        } else {
-          setActivities(data.activities);
-        }
-        
-        setPagination(data.pagination);
-      } else {
-        showAlert({ type: 'error', message: 'Failed to fetch updates' });
-      }
-    } catch (error) {
-      console.error('Error fetching activities:', error);
-      showAlert({ type: 'error', message: 'Error loading updates' });
-    } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
-    }
-  };
-
-  const loadMoreActivities = async () => {
-    if (pagination.hasMore && !isLoadingMore) {
-      setIsLoadingMore(true);
-      await fetchActivities(pagination.page + 1, true);
-    }
-  };
-
-  const markAsRead = async (activityIds: string[]) => {
-    try {
-      await fetch('/api/updates', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ activityIds })
-      });
-
-      // Update local state
-      setActivities(prev => 
-        prev.map(activity => 
-          activityIds.includes(activity.activityId) 
-            ? { ...activity, isRead: true }
-            : activity
-        )
-      );
-    } catch (error) {
-      console.error('Error marking as read:', error);
-    }
-  };
-
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 1) {
-      return `Today at ${date.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      })}`;
-    } else if (diffDays === 2) {
-      return `Yesterday at ${date.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      })}`;
-    } else if (diffDays <= 7) {
-      return `${diffDays - 1} days ago`;
-    } else {
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-      });
-    }
-  };
-
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'routine_created':
-        return (
-          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-          </div>
-        );
-      case 'routine_updated':
-        return (
-          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </div>
-        );
-      case 'log_added':
-        return (
-          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-        );
-      case 'log_updated':
-        return (
-          <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </div>
-        );
-      default:
-        return (
-          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-        );
-    }
-  };
-
-  const handleActivityClick = async (activity: Activity) => {
-    // Mark as read if unread
-    if (!activity.isRead) {
-      await markAsRead([activity.activityId]);
-    }
-
-    // Navigate based on activity type
-    if (activity.type.includes('routine') && activity.routineId) {
-      router.push(`/profile/${activity.authorId}`);
-    } else if (activity.type.includes('log')) {
-      router.push(`/profile/${activity.authorId}`);
-    }
-  };
-
-  useEffect(() => {
-    fetchActivities();
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading updates...</p>
-        </div>
-      </div>
-    );
+  if (!userActivity || !userActivity.activity || userActivity.activity.length === 0) {
+    return [];
   }
+
+  // Get all unique user IDs that have activities
+  const activityUserIds = [...new Set(userActivity.activity.map((a: any) => a.activityUserId.toString()))];
+
+  // Fetch all log documents for these users in one query
+  const logDocs = await Log.find(
+    { userId: { $in: activityUserIds } },
+    { userId: 1, logs: 1 }
+  ).lean() as any[];
+
+  // Create a map for faster log lookup
+  const logMap = new Map<string, string>();
+  logDocs.forEach((logDoc: any) => {
+    const userId = logDoc.userId.toString();
+    logDoc.logs.forEach((log: any) => {
+      const key = `${userId}-${log.timeStamp.getTime()}`;
+      logMap.set(key, log.entry);
+    });
+  });
+
+  // Map activities with their corresponding log entries
+  const activitiesWithLogs: ActivityWithLog[] = userActivity.activity.map((activity: any) => {
+    const key = `${activity.activityUserId.toString()}-${activity.timestamp.getTime()}`;
+    const logEntry = logMap.get(key);
+
+    return {
+      activityUserName: activity.activityUserName,
+      activityUserId: activity.activityUserId.toString(),
+      timestamp: new Date(activity.timestamp),
+      logEntry: logEntry || 'Log entry not found'
+    };
+  });
+
+  // Sort by timestamp (newest first)
+  return activitiesWithLogs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+}
+
+function formatTimeAgo(timestamp: Date): string {
+  const now = new Date();
+  const diffInMs = now.getTime() - timestamp.getTime();
+  const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+  if (diffInMinutes < 1) {
+    return 'Just now';
+  } else if (diffInMinutes < 60) {
+    return `${diffInMinutes}m ago`;
+  } else if (diffInHours < 24) {
+    return `${diffInHours}h ago`;
+  } else if (diffInDays < 7) {
+    return `${diffInDays}d ago`;
+  } else {
+    return timestamp.toLocaleDateString();
+  }
+}
+
+const UpdatesPage = async () => {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('token')!.value; //token won't be null due to middleware
+  const userId = await getUserId(token);
+
+  const activities = await getActivitiesWithLogs(userId);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100">
-          {/* Header */}
-          <div className="p-6 border-b border-gray-100">
-            <h1 className="text-2xl font-bold text-gray-900">Updates</h1>
-            <p className="text-gray-600 mt-1">See what people you follow are up to</p>
-          </div>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Updates
+          </h1>
+          <p className="text-gray-600">
+            See what people you follow have been logging
+          </p>
+        </div>
 
-          {/* Activities */}
-          <div className="divide-y divide-gray-100">
-            {activities.length === 0 ? (
-              <div className="p-8 text-center">
-                <div className="text-gray-400 mb-4">
-                  <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No updates yet</h3>
-                <p className="text-gray-500 mb-4">Follow other users to see their fitness activities here</p>
-                <button
-                  onClick={() => router.push('/search')}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  Find People to Follow
-                </button>
-              </div>
-            ) : (
-              <>
-                {activities.map((activity) => (
-                  <div
-                    key={activity.activityId}
-                    onClick={() => handleActivityClick(activity)}
-                    className={`p-6 hover:bg-gray-50 cursor-pointer transition-colors ${
-                      !activity.isRead ? 'bg-blue-50 border-l-4 border-blue-400' : ''
-                    }`}
-                  >
-                    <div className="flex items-start space-x-4">
-                      {getActivityIcon(activity.type)}
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium text-gray-900">
-                            {activity.authorName}
-                          </p>
-                          <span className="text-xs text-gray-500">
-                            {formatTimestamp(activity.timestamp)}
-                          </span>
-                        </div>
-                        
-                        <p className="text-sm text-gray-600 mt-1">
-                          {activity.description}
-                        </p>
-                        
-                        {activity.title && (
-                          <p className="text-sm font-medium text-gray-800 mt-2">
-                            "{activity.title}"
-                          </p>
-                        )}
-                      </div>
+        {/* Activities List */}
+        <div className="space-y-4">
+          {activities.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-gray-400 text-lg mb-2">No updates yet</div>
+              <p className="text-gray-500">
+                Follow some users to see their fitness activities here
+              </p>
+            </div>
+          ) : (
+            activities.map((activity, index) => (
+              <div
+                key={`${activity.activityUserId}-${activity.timestamp.getTime()}`}
+                className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start space-x-4">
+                  {/* Avatar */}
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                      <span className="text-white font-semibold text-sm">
+                        {activity.activityUserName.charAt(0).toUpperCase()}
+                      </span>
                     </div>
                   </div>
-                ))}
 
-                {/* Load More Button */}
-                {pagination.hasMore && (
-                  <div className="p-6 text-center">
-                    <button
-                      onClick={loadMoreActivities}
-                      disabled={isLoadingMore}
-                      className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {isLoadingMore ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          <span>Loading...</span>
-                        </div>
-                      ) : (
-                        'Load More'
-                      )}
-                    </button>
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="font-semibold text-gray-900">
+                        {activity.activityUserName}
+                      </span>
+                      <span className="text-gray-500">logged an entry</span>
+                      <span className="text-gray-400 text-sm">
+                        {formatTimeAgo(activity.timestamp)}
+                      </span>
+                    </div>
+
+                    {/* Log Entry */}
+                    <div className="bg-gray-50 rounded-lg p-4 mt-3">
+                      <p className="text-gray-800 leading-relaxed">
+                        {activity.logEntry}
+                      </p>
+                    </div>
+
+                    {/* Timestamp */}
+                    <div className="mt-3 text-xs text-gray-500">
+                      {activity.timestamp.toLocaleString()}
+                    </div>
                   </div>
-                )}
-              </>
-            )}
-          </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
+
+        {/* Load More (Future Enhancement) */}
+        {activities.length > 0 && (
+          <div className="mt-8 text-center">
+            <p className="text-gray-500 text-sm">
+              Showing latest {activities.length} activities
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

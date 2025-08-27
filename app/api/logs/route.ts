@@ -2,19 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectMongo } from '@/utilities/connection';
 import Log from '@/app/models/Log';
 import { verifyToken } from '@/utilities/jwt';
-import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { pushLogToFollowers } from '@/utilities/activityFeed';
-
+import { getUserId } from '@/utilities/gerUserId';
+import { LeanLog } from '@/types';
+import { LogDocument } from '@/types';
 export async function GET(req: NextRequest) {
   try {
     await connectMongo();
-    
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-    
+
+    const token = req.cookies.get('token')?.value;
+
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const isValid = await verifyToken(token);
+    if(!isValid) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     // Get userId and pagination parameters from query
@@ -28,8 +32,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const userLogs: any = await Log.findOne({ userId }).lean();
-    
+    const userLogs = await Log.findOne({ userId }).lean<LeanLog>();
+
     if (!userLogs || !userLogs.logs) {
       return NextResponse.json({ 
         logs: [], 
@@ -38,8 +42,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Sort logs by timestamp (newest first) and apply pagination
-    const sortedLogs = userLogs.logs.sort((a: any, b: any) => 
-      new Date(b.timeStamp).getTime() - new Date(a.timeStamp).getTime()
+    const sortedLogs = userLogs.logs.sort((a, b) => 
+      b.timeStamp.getTime() - a.timeStamp.getTime()
     );
     
     const total = sortedLogs.length;
@@ -48,7 +52,7 @@ export async function GET(req: NextRequest) {
     const hasMore = page < totalPages;
 
     // Convert to plain objects for client component
-    const serializedLogs = paginatedLogs.map((log: any) => ({
+    const serializedLogs = paginatedLogs.map((log) => ({
       entry: log.entry,
       timeStamp: log.timeStamp.toISOString()
     }));
@@ -72,16 +76,14 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await connectMongo();
-    
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-    
+
+    const token = req.cookies.get('token')?.value;
+
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded = await verifyToken(token);
-    const userId = decoded.id;
+    const userId = await getUserId(token);
     
     const { entry } = await req.json();
     
@@ -122,31 +124,29 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     await connectMongo();
-    
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-    
+
+    const token = req.cookies.get('token')?.value;
+
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded = await verifyToken(token);
-    const userId = decoded.id;
-    
+    const userId = await getUserId(token);
+
     const { timeStamp } = await req.json();
     
     if (!timeStamp) {
       return NextResponse.json({ error: 'Timestamp is required' }, { status: 400 });
     }
 
-    const userLogs = await Log.findOne({ userId });
+    const userLogs = await Log.findOne<LogDocument>({ userId });
     
     if (!userLogs) {
       return NextResponse.json({ error: 'No logs found' }, { status: 404 });
     }
 
     // Remove log entry by timestamp
-    userLogs.logs = userLogs.logs.filter((log: any) => 
+    userLogs.logs = userLogs.logs.filter((log) => 
       log.timeStamp.toISOString() !== timeStamp
     );
 
@@ -163,17 +163,14 @@ export async function DELETE(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     await connectMongo();
-    
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-    
+    const token = req.cookies.get('token')?.value;
+
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded = await verifyToken(token);
-    const userId = decoded.id;
-    
+    const userId = await getUserId(token);
+
     const { timeStamp, newEntry } = await req.json();
     
     if (!timeStamp || !newEntry || newEntry.trim() === '') {
@@ -184,14 +181,14 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Entry must be 1000 characters or less' }, { status: 400 });
     }
 
-    const userLogs = await Log.findOne({ userId });
-    
+    const userLogs = await Log.findOne<LogDocument>({ userId });
+
     if (!userLogs) {
       return NextResponse.json({ error: 'No logs found' }, { status: 404 });
     }
 
     // Find and update log entry by timestamp
-    const logIndex = userLogs.logs.findIndex((log: any) => 
+    const logIndex = userLogs.logs.findIndex((log) => 
       log.timeStamp.toISOString() === timeStamp
     );
 

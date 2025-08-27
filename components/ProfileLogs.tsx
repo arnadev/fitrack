@@ -35,9 +35,9 @@ const ProfileLogs = ({ userId, isOwner = false }: { userId: string; isOwner?: bo
   const [editingValue, setEditingValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchLogs = async (page = 1, append = false) => {

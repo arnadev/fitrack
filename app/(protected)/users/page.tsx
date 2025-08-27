@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAlert } from '@/contexts/AlertContext';
 
 interface User {
@@ -24,6 +24,7 @@ const UserSearchPage = () => {
   const [followingUsers, setFollowingUsers] = useState<{ [userId: string]: boolean }>({});
   
   const { showAlert } = useAlert();
+  const debounceTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Check follow status for multiple users
   const checkFollowStatus = async (userIds: string[]) => {
@@ -47,6 +48,38 @@ const UserSearchPage = () => {
       setFollowStatus(statusMap);
     } catch (error) {
       console.error('Error checking follow status:', error);
+    }
+  };
+
+  const performSearch = async (query: string) => {
+    setError('');
+
+    try {
+      const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ query: query.trim() }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const fetchedUsers = data.users || [];
+        setUsers(fetchedUsers);
+        setHasSearched(true);
+
+        if (fetchedUsers.length > 0) {
+          const userIds = fetchedUsers.map((user: User) => user._id);
+          await checkFollowStatus(userIds);
+        }
+      } else {
+        setError('Failed to search users');
+      }
+    } catch (err) {
+      setError('An error occurred while searching');
+      console.error('Search error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -88,56 +121,36 @@ const UserSearchPage = () => {
     }
   };
 
-  // Debounced search function
-const debouncedSearch = useMemo(
-  () =>
-    debounce(async (query: string) => {
-      setError('');
-
-      try {
-        const response = await fetch('/api/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ query: query.trim() }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const fetchedUsers = data.users || [];
-          setUsers(fetchedUsers);
-          setHasSearched(true);
-
-          if (fetchedUsers.length > 0) {
-            const userIds = fetchedUsers.map((user: User) => user._id);
-            await checkFollowStatus(userIds);
-          }
-        } else {
-          setError('Failed to search users');
-        }
-      } catch (err) {
-        setError('An error occurred while searching');
-        console.error('Search error:', err);
-      } finally {
-        setLoading(false);
-      }
-    }, 200),
-  [] // safe, debounce returns a stable function
-);
-
-
-  // Handle input change with immediate loading state
+  // Handle input change with debouncing using useRef
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
-    setLoading(true); // Set loading immediately
-    debouncedSearch(value);
+    setLoading(true);
+    
+    // Clear existing timeout
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    // Set new timeout
+    debounceTimerRef.current = setTimeout(() => {
+      performSearch(value);
+    }, 200);
   };
 
   // Initial load effect to fetch first 20 users
   useEffect(() => {
     setLoading(true);
-    debouncedSearch('');
-  }, [debouncedSearch]);
+    performSearch('');
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -278,18 +291,5 @@ const debouncedSearch = useMemo(
     </div>
   );
 };
-
-// Debounce utility function
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout;
-  
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-}
 
 export default UserSearchPage;

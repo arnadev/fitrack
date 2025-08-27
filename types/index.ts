@@ -1,3 +1,5 @@
+import { Types, Document } from "mongoose";
+
 // Core data types
 export interface Exercise {
   name: string;
@@ -15,65 +17,48 @@ export interface Routine {
   createdAt: string;
 }
 
-export interface User {
-  _id: string;
+export interface LeanUser {
+  _id: Types.ObjectId;
   name: string;
   email: string;
   password: string;
+  createdAt: Date;
 }
 
-// Component prop types
-export interface RoutineCardProps {
-  routine: Routine;
-  routineId: string;
-  isOwner?: boolean;
+export interface LeanLogEntry {
+  entry: string;
+  timeStamp: Date;
 }
 
-export interface LoginFormProps {
-  email: string;
-  password: string;
-  onEmailChange: (email: string) => void;
-  onPasswordChange: (password: string) => void;
+export interface LeanLog {
+  _id: Types.ObjectId;
+  userId: Types.ObjectId;
+  logs: LeanLogEntry[];
+  timestamp: Date;
 }
 
-export interface SignupFormProps {
-  name: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  onNameChange: (name: string) => void;
-  onEmailChange: (email: string) => void;
-  onPasswordChange: (password: string) => void;
-  onConfirmPasswordChange: (confirmPassword: string) => void;
+export interface LogDocument extends Document<Types.ObjectId> {
+  userId: Types.ObjectId;
+  logs: LeanLogEntry[];
+  timestamp: Date;
 }
 
-export interface RoutineCardSectionProps {
-  userId: string;
+export interface LeanActivityEntry {
+  activityUserName: string;
+  activityUserId: Types.ObjectId;
+  timestamp: Date;
 }
 
-// API Response types
-export interface AuthResponse {
-  message: string;
-  user?: User;
+export interface LeanActivity {
+  userId: Types.ObjectId;
+  activity: LeanActivityEntry[];
+  updatedAt: Date;
+  lastSeen: Date;
 }
 
-export interface ErrorResponse {
-  error: string;
-}
-
-// JWT Payload type
-export interface JWTPayload {
-  id: string;
-  email: string;
-  iat?: number;
-  exp?: number;
-}
-
-// Database model types (for Mongoose lean queries)
-export interface LeanRoutine extends Omit<Routine, '_id'> {
-  _id: any; // MongoDB ObjectId
-}
-
-export interface LeanUser extends Omit<User, '_id'> {
-  _id: any; // MongoDB ObjectId
+export interface ActivityDocument extends Document<Types.ObjectId> {
+  userId: Types.ObjectId;
+  activity: LeanActivityEntry[];
+  updatedAt: Date;
+  lastSeen: Date;
 }

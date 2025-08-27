@@ -4,6 +4,7 @@ import { getUserId } from '@/utilities/gerUserId';
 import UserActivity from '@/app/models/UserActivity';
 import Log from '@/app/models/Log';
 import { connectMongo } from '@/utilities/connection';
+import { LeanActivity, LeanLog } from '@/types';
 
 interface ActivityWithLog {
   activityUserName: string;
@@ -17,38 +18,38 @@ async function getActivitiesWithLogs(userId: string): Promise<ActivityWithLog[]>
   await connectMongo();
 
   // Get user's activity document
-  const userActivity = await UserActivity.findOne({ userId }).lean() as any;
-  
-  const lastSeen = userActivity?.lastSeen; // ✅ Store lastSeen before updating
-
-  // Update lastSeen to now
-  await UserActivity.updateOne({ userId }, { lastSeen: new Date() });
+  const userActivity = await UserActivity.findOne({ userId }).lean<LeanActivity>();
 
   if (!userActivity || !userActivity.activity || userActivity.activity.length === 0) {
     return [];
   }
 
+  const lastSeen = userActivity.lastSeen; // Store lastSeen before updating
+
+  // Update lastSeen to now
+  await UserActivity.updateOne({ userId }, { lastSeen: new Date() });
+
   // Get all unique user IDs that have activities
-  const activityUserIds = [...new Set(userActivity.activity.map((a: any) => a.activityUserId.toString()))];
+  const activityUserIds = [...new Set(userActivity.activity.map((a) => a.activityUserId.toString()))];
 
   // Fetch all log documents for these users in one query
   const logDocs = await Log.find(
     { userId: { $in: activityUserIds } },
     { userId: 1, logs: 1 }
-  ).lean() as any[];
+  ).lean<LeanLog[]>();
 
   // Create a map for faster log lookup
   const logMap = new Map<string, string>();
-  logDocs.forEach((logDoc: any) => {
+  logDocs.forEach((logDoc) => {
     const userId = logDoc.userId.toString();
-    logDoc.logs.forEach((log: any) => {
+    logDoc.logs.forEach((log) => {
       const key = `${userId}-${log.timeStamp.getTime()}`;
       logMap.set(key, log.entry);
     });
   });
 
   // Map activities with their corresponding log entries
-  const activitiesWithLogs: ActivityWithLog[] = userActivity.activity.map((activity: any) => {
+  const activitiesWithLogs: ActivityWithLog[] = userActivity.activity.map((activity) => {
     const key = `${activity.activityUserId.toString()}-${activity.timestamp.getTime()}`;
     const logEntry = logMap.get(key);
     const activityTimestamp = new Date(activity.timestamp);

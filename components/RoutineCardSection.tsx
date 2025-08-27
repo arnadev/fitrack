@@ -3,15 +3,9 @@ import RoutineModel from '@/app/models/Routine'
 import { connectMongo } from '@/utilities/connection';
 import RoutineCard from './RoutineCard';
 import CreateRoutineModal from './CreateRoutineModal';
-import { Exercise } from '@/types';
 
-interface Routine {
-  _id: string;
-  userId: string;
-  name: string;
-  exercises: Exercise[];
-  createdAt: string;
-}
+import { Exercise } from '@/types';
+import { Routine } from '@/types';
 
 const RoutineCardSection = async ({ userId, isOwner=false } : {userId: string, isOwner?: boolean}) => {
   await connectMongo();

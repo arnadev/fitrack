@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAlert } from '@/contexts/AlertContext';
 
-interface Exercise {
+interface ExerciseString {
   name: string;
   sets: string;
   repLower: string;
@@ -17,7 +17,7 @@ const CreateRoutineModal = () => {
   const { showAlert } = useAlert();
   const [isExpanded, setIsExpanded] = useState(false);
   const [name, setName] = useState('');
-  const [exercises, setExercises] = useState<Exercise[]>([
+  const [exercises, setExercises] = useState<ExerciseString[]>([
     { name: '', sets: '', repLower: '', repUpper: '', weight: '' }
   ]);
 
@@ -31,7 +31,7 @@ const CreateRoutineModal = () => {
     }
   };
 
-  const handleExerciseChange = (index: number, field: keyof Exercise, value: string) => {
+  const handleExerciseChange = (index: number, field: keyof ExerciseString, value: string) => {
     const updatedExercises = exercises.map((exercise, i) =>
       i === index ? { ...exercise, [field]: value } : exercise
     );

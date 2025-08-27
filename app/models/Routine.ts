@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { Exercise } from "@/types";
 
 const routineSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
@@ -47,9 +48,9 @@ const routineSchema = new mongoose.Schema({
       }
     ],
     validate: {
-      validator: function(exercises: any[]) {
+      validator: function(exercises: Exercise[]) {
         if (!exercises || exercises.length === 0) return false;
-        return exercises.every((ex: any) => ex.repLower <= ex.repUpper);
+        return exercises.every((ex: Exercise) => ex.repLower <= ex.repUpper);
       },
       message: 'At least one exercise required and repLower must be ≤ repUpper'
     }

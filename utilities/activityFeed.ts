@@ -2,6 +2,11 @@ import UserActivity from "@/app/models/UserActivity";
 import UserFollowers from "@/app/models/UserFollowers";
 import User from "@/app/models/User";
 
+interface Follower {
+  userId: string;
+  followedAt: Date;
+}
+
 export const pushLogToFollowers = async (
   logTimestamp: Date, 
   userId: string
@@ -21,7 +26,7 @@ export const pushLogToFollowers = async (
       return;
     }
 
-    const followerIds = followersDoc.followers.map((f: any) => f.userId);
+    const followerIds = followersDoc.followers.map((f: Follower) => f.userId);
 
     // 3. Create the activity object
     const newActivity = {

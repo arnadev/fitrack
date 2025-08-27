@@ -3,22 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAlert } from '@/contexts/AlertContext';
-
-interface Exercise {
-  name: string;
-  sets: number;
-  repLower: number;
-  repUpper: number;
-  weight: number;
-}
-
-interface Routine {
-  _id: string;
-  userId: string;
-  name: string;
-  exercises: Exercise[];
-  createdAt: string;
-}
+import type { Exercise } from '@/types';
+import type { Routine } from '@/types';
 
 interface RoutineCardProps {
   routine: Routine;

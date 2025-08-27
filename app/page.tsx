@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import LoginForm from '../components/LoginForm';
 import SignupForm from '../components/SignupForm';
+import Image from 'next/image';
 import SocialLoginButtons from '../components/SocialLoginButtons';
 
 const AuthPage = () => {
@@ -24,6 +25,11 @@ const AuthPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-8">
+          {/* Logo */}
+          <div>
+            <Image src='/logo.png' alt='Logo' width={150} height={100} className="mx-auto" />
+          </div>
+
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">

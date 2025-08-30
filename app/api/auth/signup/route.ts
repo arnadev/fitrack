@@ -2,6 +2,7 @@ import { connectMongo } from "@/utilities/connection";
 import User from "@/app/models/User";
 import { NextRequest, NextResponse } from "next/server";
 import { generateToken } from "@/utilities/jwt";
+import bcrypt from 'bcrypt';
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,7 +18,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Create a new user
-    const newUser = new User({ name, email, password });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ name, email, password: hashedPassword });
     await newUser.save();
 
     // Generate JWT token

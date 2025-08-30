@@ -2,6 +2,7 @@ import { connectMongo } from "@/utilities/connection";
 import User from "@/app/models/User";
 import { NextRequest, NextResponse } from "next/server";
 import { generateToken } from "@/utilities/jwt";
+import bcrypt from 'bcrypt';
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,8 +17,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Validate password (you should hash and compare passwords in a real app)
-    if (user.password !== password) {
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
     }
 

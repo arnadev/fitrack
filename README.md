@@ -12,5 +12,6 @@ Fitness Tracking Webapp : Fitrack
 
 Built using NextJS - Hosted on Vercel + MongoDB Atlas
 
-Deployed Link: https://vercel.com/arnadevs-projects/fitrack/GKfoKMUko4Wdrtqoa9fAEEbPU4fZ
+Deployed Link: https://fitrack-yz7r1dwgz-arnadevs-projects.vercel.app/
+
 
